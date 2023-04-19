@@ -1,0 +1,222 @@
+---
+title: "influxdbr"
+output: github_document  
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "README-"
+)
+Sys.setenv(LANG = "en")
+```
+
+[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/influxdbr)](https://cran.r-project.org/package=influxdbr) [![Build Status](https://travis-ci.org/dleutnant/influxdbr.svg?branch=master)](https://travis-ci.org/dleutnant/influxdbr)
+
+R interface to [InfluxDB](https://docs.influxdata.com/influxdb)
+
+This package allows you to fetch and write time series data from/to an InfluxDB server.
+Additionally, handy wrappers for the Influx Query Language (IQL) to manage and explore a remote database are provided.
+
+## Installation
+
+Installation is easy thanks to CRAN:
+```{r cran, eval = FALSE}
+install.packages("influxdbr")
+```
+
+You can install the dev version from github with:
+```{r gh-installation, eval = FALSE}
+# install.packages("remotes")
+remotes::install_github("dleutnant/influxdbr")
+```
+
+## Example
+
+This is a basic example which shows you how to communicate (i.e. query and write data)
+with the InfluxDB server.
+
+```{r libs}
+library(dplyr)
+library(influxdbr)
+library(xts)
+```
+
+Let's create first some sample data from the xts package and assign arbitrary 
+attributes:
+
+```{r sample}
+# attach data "sample_matrix"
+data("sample_matrix")
+
+# create xts object
+xts_data <- xts::as.xts(x = sample_matrix)
+
+# assign some attributes
+xts::xtsAttributes(xts_data) <- list(info = "SampleDataMatrix",
+                                     UnitTesting = TRUE, 
+                                     n = 180,
+                                     source = "xts")
+                                     
+# print structure to inspect the object
+str(xts_data)
+```
+
+### InfluxDB connection
+
+To connect to an InfluxDB server, we need a connection object. A connection object 
+can be created by providing usual server details (e.g. `host`, `port`, ...) or with
+help of a group file, which conveniently holds all information for us (s. package 
+documentation):
+
+```{r connection}
+# create connection object 
+# (here: based on a config file with group "admin" in it (s. package documentation))
+con <- influx_connection(group = "admin")
+```
+
+The `influxdbr` package provides handy wrappers to manage a remote InfluxDB:
+
+```{r db_management}
+# create new database
+create_database(con = con, db = "mydb")
+
+# list all databases
+show_databases(con = con) %>% 
+  filter(name == "mydb") # show the db created above only
+```
+### Write data
+
+#### xts
+
+Writing an xts-object to the server can be achieved with `influx_write`. In this 
+case, columnnames of the `xts` object are used as InfluxDB's field keys,
+`xts`'s coredata represent field values. Attributes are preserved and written
+as tag keys and values, respectively.
+
+```{r write_xts}
+# write example xts-object to database
+influx_write(con = con, 
+             db = "mydb",
+             x = xts_data, 
+             measurement = "sampledata")
+```
+
+#### data.frame
+
+Writing a data.frame (or tibble) to the server can also be achieved with
+`influx_write`. In this case, we need to specify which columns of the data.frame 
+represent time and tags. Fields are automatically determined.Each row represents
+a unique data point. `NA`'s are not supported and need to be removed. 
+Timestamps should be located in column `time`.
+
+Remember that time and tags are optional: InfluxDB uses the server’s local 
+nanosecond timestamp in UTC if the timestamp is not included with the point.
+
+```{r write_df}
+# convert the existing xts-object to data.frame
+df_data <- dplyr::bind_cols(time = zoo::index(xts_data), # timestamp
+                            data.frame(xts_data)) %>% # coredata
+  dplyr::mutate(info = "SampleDataMatrix", # add tag 'info'
+                UnitTesting = TRUE, # add tag 'UnitTesting'
+                n = row_number(), # add tag 'n'
+                source = "df")  # add source 'df'
+
+df_data
+
+# write example data.frame to database
+influx_write(con = con, 
+             db = "mydb",
+             x = df_data,
+             time_col = "time", tag_cols = c("info", "UnitTesting", "n", "source"),
+             measurement = "sampledata")
+```
+
+We can now check if the time series were successfully written:
+
+```{r check_write_xts}
+# check if measurements were succefully written
+show_measurements(con = con, db = "mydb")
+```
+
+### Query data
+
+To query the database, two functions `influx_query` and `influx_select` are available.
+`influx_select` wraps around `influx_query` and can be useful for simple requests 
+because it provides default query parameters. The return type can be configured 
+to be of class `tibble` or of class `xts`.
+
+#### Return tibbles
+
+If `return_xts = FALSE` a list of tibbles per query statement is returned. Each tibble contains columns with statement_id, series_names, tags, time and fields.
+
+```{r return_tibble}
+# fetch time series data by using the helper function `influx_select`
+result <- influx_select(con = con, 
+                        db = "mydb", 
+                        field_keys = "Open, High", 
+                        measurement = "sampledata",
+                        where = "source = 'df'",
+                        group_by = "*",
+                        limit = 10, 
+                        order_desc = TRUE, 
+                        return_xts = FALSE)
+
+result
+```
+
+#### Return xts
+
+If `return_xts = TRUE` a list of xts objects per query statement is returned. Because xts objects are basically matrices (which can store one data type only), a single xts object is created for each InfluxDB field. This ensures a correct representation of the field values data type (instead of getting all into a "character" matrix). InfluxDB tags are now xts attributes.
+
+```{r return_xts}
+# fetch time series data by using the helper function `influx_select`
+result <- influx_select(con = con, 
+                        db = "mydb", 
+                        field_keys = "Open, High", 
+                        measurement = "sampledata",
+                        where = "source = 'xts'",
+                        group_by =  "*",
+                        limit = 10, 
+                        order_desc = TRUE, 
+                        return_xts = TRUE)
+
+str(result)
+```
+#### Simplify InfluxDB response
+
+In case the InfluxDB response is expected to be a single series only, 
+we can flatten the list (`simplifyList = TRUE`) to directly get to the data.
+This enhances a pipeable work flow.
+
+```{r simplify_response}
+result <- influx_select(con = con, 
+                        db = "mydb", 
+                        field_keys = "Open", 
+                        measurement = "sampledata",
+                        where = "source = 'df'",
+                        group_by =  "*",
+                        limit = 10, 
+                        order_desc = TRUE, 
+                        return_xts = FALSE, 
+                        simplifyList = TRUE)
+
+str(result)
+```
+
+## Contributions
+This Git repository contains the latest contributions to the R package `influxdbr` and other code that will appear in the next [CRAN](https://cran.r-project.org/package=influxdbr) release.
+
+Contributing to this package is easy. Just send a [pull request](https://help.github.com/articles/using-pull-requests/). Your PR should pass `R CMD check --as-cran`, which will also be checked by <a href="https://travis-ci.org/dleutnant/influxdbr">Travis CI</a> when the PR is submitted.
+
+## Code of conduct
+Please note that this project is released with a [Contributor Code of Conduct](CONDUCT.md). By participating in this project you agree to abide by its terms.
+
+## Citation
+
+```{r citation, echo=FALSE, results='asis'}
+citation("influxdbr")
+```
