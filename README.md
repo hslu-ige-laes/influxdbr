@@ -1,3 +1,6 @@
+Clone of Repo from [https://github.com/dleutnant/influxdbr](https://github.com/dleutnant/influxdbr).
+The Original package has an error, that's why we should use this clone which has the required bug fix to work with current R versions...
+
 influxdbr
 ================
 
