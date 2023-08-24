@@ -65,7 +65,7 @@ drop_series <- function(con,
   
   query <- ifelse(is.null(measurement),
                   query,
-                  paste(query, "FROM", measurement))
+                  paste0(query, " FROM ", base::dQuote(measurement)))
   
   query <- ifelse(is.null(where),
                   query,
@@ -96,7 +96,7 @@ delete <- function(con,
   
   query <- ifelse(is.null(measurement),
                   query,
-                  paste(query, "FROM", measurement))
+                  paste0(query, " FROM ", base::dQuote(measurement)))
   
   query <- ifelse(is.null(where),
                   query,

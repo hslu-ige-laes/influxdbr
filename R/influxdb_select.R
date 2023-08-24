@@ -44,7 +44,7 @@ influx_select <- function(con,
   ### Select all data from more than one measurement
   measurement <- paste(measurement, collapse = ", ")
   
-  query <- paste("SELECT", field_keys, "FROM", measurement)
+  query <- paste0("SELECT ", field_keys, " FROM ", base::dQuote(measurement))
   
   query <- ifelse(is.null(where),
                   query,
