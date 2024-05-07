@@ -1,35 +1,22 @@
+influxdbr
+================
 Clone of Repo from [https://github.com/dleutnant/influxdbr](https://github.com/dleutnant/influxdbr).
 The Original package has an error, that's why we should use this clone which has the required bug fix to work with current R versions...
 
-influxdbr
-================
+## Installation
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
+You can install the dev version from github with:
 
-[![CRAN\_Status\_Badge](http://www.r-pkg.org/badges/version/influxdbr)](https://cran.r-project.org/package=influxdbr)
-[![Build
-Status](https://travis-ci.org/dleutnant/influxdbr.svg?branch=master)](https://travis-ci.org/dleutnant/influxdbr)
-
-R interface to [InfluxDB](https://docs.influxdata.com/influxdb)
+``` r
+install.packages("remotes") # maybe you already have this package, then you don't need to install it again
+remotes::install_github("hslu-ige-laes/influxdbr")
+```
+interface to [InfluxDB v1.x](https://docs.influxdata.com/influxdb)
 
 This package allows you to fetch and write time series data from/to an
 InfluxDB server. Additionally, handy wrappers for the Influx Query
 Language (IQL) to manage and explore a remote database are provided.
 
-## Installation
-
-Installation is easy thanks to CRAN:
-
-``` r
-install.packages("influxdbr")
-```
-
-You can install the dev version from github with:
-
-``` r
-# install.packages("remotes")
-remotes::install_github("hslu-ige-laes/influxdbr")
-```
 
 ## Example
 
