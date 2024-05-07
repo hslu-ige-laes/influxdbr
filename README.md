@@ -28,7 +28,7 @@ You can install the dev version from github with:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("dleutnant/influxdbr")
+remotes::install_github("hslu-ige-laes/influxdbr")
 ```
 
 ## Example
